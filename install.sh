@@ -2,7 +2,7 @@
 # sing-box-ours 一键安装脚本（install.sh）
 #
 # 一条命令，在一台干净的 VPS 上装好我们自己的多协议节点服务。
-#   curl -fsSL https://example.com/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | bash -s -- install
 # （正式发布前把上面的地址换成真实仓库地址；不要用任何第三方短链。）
 #
 # 哲学（斯诺登）：

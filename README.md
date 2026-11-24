@@ -82,8 +82,11 @@ install.sh latency        # 服务端：逐端口 TCP 建连＋TLS 握手耗时
 一台干净的 VPS（Debian / Ubuntu / Oracle Linux / Rocky / Alma，x86_64 或 ARM64），一条命令：
 
 ```bash
-curl -fsSL https://example.com/install.sh | bash
-# 正式发布前把地址换成真实仓库地址；不要用任何第三方短链。
+# 零交互全自动（推荐）：一条命令装完，装完即用
+curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | bash -s -- install
+
+# 交互菜单：不带参数，逐步选
+curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | bash
 ```
 
 默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完会打印默认用户的订阅位置。
