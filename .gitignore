@@ -1,0 +1,29 @@
+# sing-box-ours .gitignore
+# 绝不进仓库的东西：任何凭证、密钥、状态、测试产生的真实数据。
+
+# 状态与凭证（本机生成，绝不提交）
+state.json
+state.json.tmp
+config.json
+config.json.bak.*
+cert.pem
+key.pem
+subscriptions/
+rule-sets/
+*.bak.*
+
+# 测试与本地产物
+*.tar.gz
+*.log
+run*.json
+run*.log
+run*.pid
+sclient.txt
+warp_*.pem
+warp_*.json
+
+# 编辑器与系统文件
+.DS_Store
+*.swp
+__pycache__/
+*.pyc
