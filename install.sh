@@ -84,7 +84,7 @@ need_root() {
     info "测试模式：跳过 root 检查与系统级操作。"
     return
   fi
-  [ "$(id -u)" -eq 0 ] || die "请用 root 运行。"
+  [ "$(id -u)" -eq 0 ] || die "请用 root 运行：先执行 sudo -i 切换到 root，再跑这条命令。"
 }
 
 install_deps() {
@@ -665,8 +665,12 @@ EOF
 
 main() {
   local cmd="${1:-menu}"; shift || true
-  # help 不用生成器，其他命令先确保 gen-config.py 在位（管道安装时现场下载）。
-  [ "$cmd" = "help" ] || [ "$cmd" = "--help" ] || [ "$cmd" = "-h" ] || ensure_gen_py
+  # help 不用 root 也不用生成器；其他命令先查 root 再确保 gen-config.py 在位。
+  # 顺序不能反：普通用户先跑 ensure 会在 mkdir /etc/sing-box-ours 上报看不懂的 Permission denied。
+  case "$cmd" in
+    help|--help|-h) usage ;;
+    *) need_root; ensure_gen_py ;;
+  esac
   case "$cmd" in
     install)   cmd_install "$@" ;;
     update)    cmd_update "$@" ;;
