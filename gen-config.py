@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -322,6 +323,7 @@ def cmd_init(paths, singbox, args):
         "warp": None,
         "warp_domains": list(DEFAULT_WARP_DOMAINS),
         "users": {"default": new_user_credentials()},
+        "sub": {"enabled": False, "port": None, "token": None},
     }
     # 证书：自签是默认；带 --cert/--key 则用用户自带真实证书。
     if args.cert and args.key:
@@ -672,6 +674,40 @@ def _b64(s):
     return base64.b64encode(s.encode()).decode()
 
 
+# 节点备注：写给小白看的——协议名 + 用途，一眼分清哪个主用、哪个加速、哪个备用。
+# default 用户直接用用途名；其他用户前面加用户名，避免一个客户端里重名。
+REMARKS = {
+    "VLESS-Reality": "Reality-主用-延迟最低",
+    "VLESS-TLS": "VLESS-TLS-备用",
+    "Hysteria2": "Hy2-加速-速度最快",
+    "TUIC": "TUIC-备用",
+    "Trojan": "Trojan-备用",
+    "Shadowsocks": "SS-备用",
+    "VMess-WS": "VMess-备用",
+    "Naive": "Naive-备用",
+}
+
+PURPOSES = {
+    "VLESS-Reality": "主用，延迟最低，日常就用这个",
+    "VLESS-TLS": "备用",
+    "Hysteria2": "加速，速度最快，下载、看视频用这个",
+    "TUIC": "备用（加速不好用时换这个）",
+    "Trojan": "备用",
+    "Shadowsocks": "备用",
+    "VMess-WS": "备用",
+    "Naive": "备用",
+}
+
+
+def _remark(name, label):
+    return label if name == "default" else "%s-%s" % (name, label)
+
+
+def _frag(name, label):
+    """分享链接 # 后面的备注：中文要 percent 编码，客户端显示时再解码。"""
+    return urllib.parse.quote(_remark(name, label), safe="")
+
+
 def build_share_links(st, name, u):
     ip = st["server_ip"]
     p = st["ports"]
@@ -686,7 +722,7 @@ def build_share_links(st, name, u):
          "&sni=%s&fp=chrome&pbk=%s&sid=%s&type=tcp" %
          (sni, st["reality"]["public_key"], st["reality"]["short_id"]))
     links.append(("VLESS-Reality",
-                  "vless://%s@%s:%d?%s#%s" % (u["vless_uuid"], ip, p["vless_reality"], q, name)))
+                  "vless://%s@%s:%d?%s#%s" % (u["vless_uuid"], ip, p["vless_reality"], q, _frag(name, REMARKS["VLESS-Reality"]))))
     # VLESS TLS (+ECH)
     q2 = ("encryption=none&flow=xtls-rprx-vision&security=tls"
           "&sni=%s&fp=chrome&type=tcp" % tls_name)
@@ -695,7 +731,7 @@ def build_share_links(st, name, u):
     if st.get("ech"):
         q2 += "&ech=" + _b64url(st["ech"]["config_blob"])
     links.append(("VLESS-TLS",
-                  "vless://%s@%s:%d?%s#%s" % (u["vless_uuid"], ip, p["vless_tls"], q2, name)))
+                  "vless://%s@%s:%d?%s#%s" % (u["vless_uuid"], ip, p["vless_tls"], q2, _frag(name, REMARKS["VLESS-TLS"]))))
     # Hysteria2：端口跳跃区间写进 mport，客户端按区间轮换。
     hop = st["hop"]["hy2"]
     q3 = ("security=tls&alpn=h3&sni=%s&mport=%d-%d&obfs=salamander"
@@ -704,7 +740,7 @@ def build_share_links(st, name, u):
     if self_signed:
         q3 += "&pinSHA256=%s" % pin
     links.append(("Hysteria2",
-                  "hysteria2://%s@%s:%d?%s#%s" % (u["hy2_password"], ip, p["hy2"], q3, name)))
+                  "hysteria2://%s@%s:%d?%s#%s" % (u["hy2_password"], ip, p["hy2"], q3, _frag(name, REMARKS["Hysteria2"]))))
     # TUIC v5
     hop_t = st["hop"]["tuic"]
     q4 = ("congestion_control=bbr&udp_relay_mode=native&alpn=h3&sni=%s" % tls_name)
@@ -712,20 +748,20 @@ def build_share_links(st, name, u):
         q4 += "&allowInsecure=1"
     links.append(("TUIC",
                   "tuic://%s:%s@%s:%d?%s#%s" %
-                  (u["tuic_uuid"], u["tuic_password"], ip, p["tuic"], q4, name)))
+                  (u["tuic_uuid"], u["tuic_password"], ip, p["tuic"], q4, _frag(name, REMARKS["TUIC"]))))
     # Trojan
     q5 = "security=tls&sni=%s&fp=chrome&type=tcp" % tls_name
     if self_signed:
         q5 += "&allowInsecure=1"
     links.append(("Trojan",
-                  "trojan://%s@%s:%d?%s#%s" % (u["trojan_password"], ip, p["trojan"], q5, name)))
+                  "trojan://%s@%s:%d?%s#%s" % (u["trojan_password"], ip, p["trojan"], q5, _frag(name, REMARKS["Trojan"]))))
     # Shadowsocks 2022
     ss_userinfo = _b64("2022-blake3-aes-128-gcm:%s" % u["ss_password"])
     links.append(("Shadowsocks",
-                  "ss://%s@%s:%d#%s" % (ss_userinfo, ip, p["ss"], name)))
+                  "ss://%s@%s:%d#%s" % (ss_userinfo, ip, p["ss"], _frag(name, REMARKS["Shadowsocks"]))))
     # VMess WS+TLS（仅开启时）
     if st["options"].get("vmess"):
-        vm = {"v": "2", "ps": name + "-vmess", "add": ip, "port": str(p["vmess"]),
+        vm = {"v": "2", "ps": _remark(name, REMARKS["VMess-WS"]), "add": ip, "port": str(p["vmess"]),
               "id": u["vmess_uuid"], "aid": "0", "scy": "auto", "net": "ws",
               "type": "none", "host": tls_name,
               "path": st.get("vmess_path", "/ws"), "tls": "tls", "sni": tls_name}
@@ -737,7 +773,7 @@ def build_share_links(st, name, u):
     if st["options"].get("naive"):
         links.append(("Naive",
                       "naive+https://%s:%s@%s:%d#%s" %
-                      (u["naive_username"], u["naive_password"], ip, p["naive"], name)))
+                      (u["naive_username"], u["naive_password"], ip, p["naive"], _frag(name, REMARKS["Naive"]))))
     return links
 
 
@@ -1158,8 +1194,124 @@ def cmd_fragment(paths, singbox, args):
     return cmd_regen(paths, singbox, args)
 
 
+def _sub_url(st):
+    sub = st.get("sub") or {}
+    if not sub.get("enabled") or not sub.get("port") or not sub.get("token"):
+        return None
+    return "http://%s:%d/%s" % (st["server_ip"], sub["port"], sub["token"])
+
+
+def cmd_sub_on(paths, singbox, args):
+    """开启本地订阅：随机端口 + 随机 token，只给 default 用户的 sub.b64。
+    客户端加一次订阅链接，之后点“更新订阅”就能刷新节点（甬哥的本地IP订阅同款做法）。"""
+    st = load_state(paths)
+    sub = st.get("sub") or {}
+    if not sub.get("port"):
+        rng = random.Random()
+        taken = set(st["ports"].values())
+        for _ in range(100):
+            p = rng.randint(20000, 40000)
+            if p not in taken:
+                sub["port"] = p
+                break
+        if not sub.get("port"):
+            eprint("没找到空闲订阅端口。")
+            return 1
+    if not sub.get("token"):
+        sub["token"] = secrets.token_hex(16)
+    sub["enabled"] = True
+    st["sub"] = sub
+    save_state(paths, st)
+    print("本地订阅已开启：%s" % _sub_url(st))
+    print("只服务这一条地址，其他路径一律 404；链接本身就是密码，别发给别人。")
+    print("还需要在云厂商安全组放行 TCP 端口 %d。" % sub["port"])
+    return 0
+
+
+def cmd_sub_off(paths, singbox, args):
+    st = load_state(paths)
+    sub = st.get("sub") or {}
+    sub["enabled"] = False
+    st["sub"] = sub
+    save_state(paths, st)
+    print("本地订阅已关闭。")
+    return 0
+
+
+def cmd_serve_sub(paths, singbox, args):
+    """订阅 HTTP 服务：只认 /<token> 这一条路，返回 default 用户的 sub.b64；
+    其他路径一律 404，不列目录、不读别的目录。由 systemd 启动。"""
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    st = load_state(paths)
+    sub = st.get("sub") or {}
+    if not sub.get("enabled") or not sub.get("port") or not sub.get("token"):
+        eprint("本地订阅未开启，先跑 sub-on。")
+        return 1
+    token = sub["token"]
+    port = sub["port"]
+    sub_file = os.path.join(paths.sub_dir, "default", "sub.b64")
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path != "/" + token:
+                self.send_response(404)
+                self.end_headers()
+                return
+            try:
+                with open(sub_file, "rb") as f:
+                    body = f.read()
+            except OSError:
+                self.send_response(404)
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+
+    print("订阅服务监听 0.0.0.0:%d（只认 /<token>）" % port)
+    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    return 0
+
+
 def cmd_show(paths, singbox, args):
     st = load_state(paths)
+    if getattr(args, "full", False):
+        return _show_full(paths, singbox, st, args)
+    # 小白版：只给“哪个节点干什么 + 一键导入 + 订阅刷新”，不给端口 JSON。
+    if not args.name:
+        print("用户：%s" % ", ".join(sorted(st["users"])))
+        print("看某个用户的节点：install.sh show <用户名>")
+        return 0
+    if args.name not in st["users"]:
+        eprint("用户 %s 不存在。" % args.name)
+        return 1
+    links = build_share_links(st, args.name, st["users"][args.name])
+    print("=== %s 的节点（%d 个）===" % (args.name, len(links)))
+    for i, (label, url) in enumerate(links, 1):
+        print("%d. %s —— %s" % (i, _remark(args.name, REMARKS[label]), PURPOSES.get(label, "备用")))
+    print()
+    print("--- 一键导入（复制下面这一行） ---")
+    print(_b64("\n".join(url for _, url in links) + "\n"))
+    print("用法：复制上面这一行 → 打开 v2rayN → 在节点列表按 Ctrl+V，全部节点一次全进。")
+    url = _sub_url(st)
+    if url:
+        print()
+        print("--- 刷新节点（订阅链接） ---")
+        print(url)
+        print("v2rayN 里：订阅分组 → 订阅分组设置 → 添加 → 粘贴上面这个链接 → 更新订阅（不通过代理）。")
+        print("以后节点变了，点一下“更新订阅”就刷新，不用重装。")
+    else:
+        print()
+        print("想以后一键刷新节点：跑 install.sh sub-on 开本地订阅，再按提示把链接加进 v2rayN。")
+    return 0
+
+
+def _show_full(paths, singbox, st, args):
     print("服务端：%s（域名：%s）" % (st["server_ip"], st.get("domain") or "无"))
     print("Reality SNI：%s；VLESS Reality 端口：443；证书：%s" %
           (st["reality_sni"], st["cert"]["mode"]))
@@ -1181,6 +1333,9 @@ def cmd_show(paths, singbox, args):
         print(_b64("\n".join(url for _, url in links) + "\n"))
         print("用法：复制上面这一行 → 打开 v2rayN → 在节点列表按 Ctrl+V"
               "（或 服务器 → 从剪贴板导入批量URL），全部节点一次全进。")
+    url = _sub_url(st)
+    if url:
+        print("订阅链接（刷新节点用）：%s" % url)
     return 0
 
 
@@ -1288,7 +1443,14 @@ def main():
     p.set_defaults(fn=cmd_list_users)
     p = sub.add_parser("show", help="查看状态与某用户的分享链接")
     p.add_argument("name", nargs="?", default=None)
+    p.add_argument("--full", action="store_true", help="显示全部原始链接与端口（默认是小白版）")
     p.set_defaults(fn=cmd_show)
+    p = sub.add_parser("sub-on", help="开启本地订阅（订阅链接刷新节点）")
+    p.set_defaults(fn=cmd_sub_on)
+    p = sub.add_parser("sub-off", help="关闭本地订阅")
+    p.set_defaults(fn=cmd_sub_off)
+    p = sub.add_parser("serve-sub", help="订阅 HTTP 服务（由 systemd 启动）")
+    p.set_defaults(fn=cmd_serve_sub)
     p = sub.add_parser("warp-on", help="注册免费 WARP 并开启分流")
     p.set_defaults(fn=cmd_warp_on)
     p = sub.add_parser("warp-off", help="关闭 WARP 分流")

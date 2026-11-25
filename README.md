@@ -97,8 +97,12 @@ curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | 
 
 默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完直接打印默认用户的订阅链接和一键导入码：v2rayN 里按 Ctrl+V，全部节点一次全进。
 
+节点分工（小白看这个就行）：Reality 主用、延迟最低，日常就用它；Hy2 加速、速度最快，下载和看视频用它；TUIC、Trojan、SS、VLESS-TLS 都是备用。
+
 ```bash
-install.sh show default          # 看默认用户的全部链接
+install.sh show default          # 小白版：节点用途 + 一键导入码（--full 看全部原始链接）
+install.sh sub-on                # 开本地订阅：v2rayN 里添加订阅链接，点更新订阅就刷新节点
+install.sh sub-off               # 关本地订阅
 install.sh add-user alice        # 新增用户（独立凭证）
 install.sh del-user alice        # 删除用户（其链接即刻失效）
 install.sh warp-on               # 注册免费 WARP 并开启分流

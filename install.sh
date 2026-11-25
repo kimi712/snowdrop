@@ -463,10 +463,42 @@ cmd_self_update() {
   exit 0
 }
 
+write_sub_unit() {
+  [ "$TEST_MODE" -eq 1 ] && { info "[测试模式] 跳过订阅服务。"; return; }
+  cat > "/etc/systemd/system/${SERVICE}-sub.service" <<EOF
+[Unit]
+Description=sing-box-ours local subscription server
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 $GEN_PY --root $ROOT serve-sub
+Restart=on-failure
+RestartSec=5
+[Install]
+WantedBy=multi-user.target
+EOF
+}
+
+cmd_sub_on() {
+  # 开本地订阅：state 里生成端口+token，再写 systemd 服务并启动。
+  cmd_gen sub-on || return $?
+  write_sub_unit
+  [ "$TEST_MODE" -eq 0 ] && { systemctl daemon-reload; systemctl enable -q "${SERVICE}-sub.service" 2>/dev/null || true; systemctl restart "${SERVICE}-sub.service"; }
+  info "本地订阅服务已启动。"
+}
+
+cmd_sub_off() {
+  cmd_gen sub-off || return $?
+  [ "$TEST_MODE" -eq 0 ] && { systemctl stop "${SERVICE}-sub.service" 2>/dev/null || true; systemctl disable -q "${SERVICE}-sub.service" 2>/dev/null || true; }
+  info "本地订阅服务已停止。"
+}
+
 cmd_uninstall() {
   need_root
-  [ "$TEST_MODE" -eq 0 ] && systemctl stop "$SERVICE" 2>/dev/null || true
-  [ "$TEST_MODE" -eq 0 ] && systemctl disable -q "$SERVICE" "${SERVICE}-update.timer" "${SERVICE}-firewall.service" 2>/dev/null || true
+  [ "$TEST_MODE" -eq 0 ] && systemctl stop "$SERVICE" "${SERVICE}-sub.service" 2>/dev/null || true
+  [ "$TEST_MODE" -eq 0 ] && systemctl disable -q "$SERVICE" "${SERVICE}-update.timer" "${SERVICE}-firewall.service" "${SERVICE}-sub.service" 2>/dev/null || true
   firewall_remove
   local backup="/root/sing-box-ours-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
   if [ -d "$ROOT" ]; then
@@ -658,7 +690,8 @@ cmd_menu() {
     echo " 6) 开启 VMess      7) 健康检查"
     echo " 8) 流量统计（仅端口字节数）"
     echo " 9) 检查更新        0) 退出"
-    read -rp "选一项 [0-9]: " n
+    echo "10) 开本地订阅     11) 关本地订阅"
+    read -rp "选一项 [0-11]: " n
     case "$n" in
       1) cmd_gen show default ;;
       2) read -rp "新用户名: " u; cmd_gen add-user "$u" ;;
@@ -669,6 +702,8 @@ cmd_menu() {
       7) cmd_health ;;
       8) cmd_traffic ;;
       9) cmd_update ;;
+      10) cmd_sub_on ;;
+      11) cmd_sub_off ;;
       0) exit 0 ;;
       *) echo "无效选项。" ;;
     esac
@@ -682,11 +717,12 @@ usage() {
   install [--domain 域名] [--vmess] [--naive]  一键安装（默认装 Reality+Hy2+TUIC+Trojan+SS）
   update [--auto]     检查并更新 sing-box 到最新稳定版（校验 SHA-256）
   self-update         更新本脚本与 gen-config.py 到仓库最新版（校验语法，不动配置）
+  sub-on / sub-off     开 / 关本地订阅（订阅链接刷新节点；开完按提示放行端口）
   uninstall           卸载（先备份配置到 /root/sing-box-ours-backup-*.tar.gz）
   status              服务状态 + 配置校验 + 监听端口
   health              健康检查（配置、服务）
   traffic             流量统计（仅端口总字节数，不记访问记录）
-  show [用户名]       查看状态；带用户名时打印分享链接＋一键导入码＋二维码
+  show [用户名] [--full]  小白版：节点用途＋一键导入码；--full 看全部原始链接与端口
   add-user <名> [--expires YYYY-MM-DD]  新增用户（独立凭证，可设到期日）
   del-user <名>       删除用户（其链接即刻失效）
   rotate-user <名>    轮换单个用户的全部凭证
@@ -724,6 +760,8 @@ main() {
     install)   cmd_install "$@" ;;
     update)    cmd_update "$@" ;;
     self-update) cmd_self_update "$@" ;;
+    sub-on)    cmd_sub_on "$@" ;;
+    sub-off)   cmd_sub_off "$@" ;;
     uninstall) cmd_uninstall "$@" ;;
     status)    cmd_status "$@" ;;
     health)    cmd_health "$@" ;;
