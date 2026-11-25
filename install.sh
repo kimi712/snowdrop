@@ -372,8 +372,12 @@ cmd_install() {
     systemctl is-active -q "$SERVICE" || { warn "服务未正常启动，看日志：journalctl -u $SERVICE -n 50"; }
   fi
   echo
-  info "安装完成。查看订阅：$GEN_DIR/install.sh show default"
-  info "管理命令：$GEN_DIR/install.sh help"
+  info "安装完成！下面是默认用户的订阅链接，复制到手机/电脑的 sing-box 或 Clash 客户端里导入就能用："
+  SB_OURS_ROOT="$ROOT" python3 "$GEN_PY" --root "$ROOT" --sing-box "$BIN" show default \
+    || warn "订阅链接这次没打出来，跑 $GEN_DIR/install.sh show default 再看一次。"
+  echo
+  info "接下来：1) 复制上面的链接，到客户端里添加；2) 选一个延迟最低的节点就能用了。"
+  info "管理命令：$GEN_DIR/install.sh help（加用户、换端口、看流量都在这里）"
 }
 
 cmd_update() {

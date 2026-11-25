@@ -95,7 +95,7 @@ curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | bash
 ```
 
-默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完会打印默认用户的订阅位置。
+默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完直接打印默认用户的订阅链接，复制到客户端就能用。
 
 ```bash
 install.sh show default          # 看默认用户的全部链接
