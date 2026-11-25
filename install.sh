@@ -26,7 +26,7 @@ SB_REPO="SagerNet/sing-box"
 SERVICE="sing-box-ours"
 BIN="${SB_OURS_BIN:-/usr/local/bin/sing-box}"
 ROOT="${SB_OURS_ROOT:-/etc/sing-box-ours}"
-GEN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GEN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-.}")" && pwd)"
 GEN_PY="${GEN_DIR}/gen-config.py"
 # 管道安装（curl | bash）时 BASH_SOURCE 不是实体文件，GEN_DIR 会退化成当前目录，
 # gen-config.py 根本不在那里，安装必失败。此时把管理脚本统一放到 ROOT（/etc/sing-box-ours），
