@@ -402,7 +402,7 @@ cmd_install() {
   SB_OURS_ROOT="$ROOT" python3 "$GEN_PY" --root "$ROOT" --sing-box "$BIN" show default \
     || warn "订阅链接这次没打出来，跑 $GEN_DIR/install.sh show default 再看一次。"
   echo
-  info "接下来：1) 复制上面的链接，到客户端里添加；2) 选一个延迟最低的节点就能用了。"
+  info "接下来：1) 复制上面的一键导入码，到 v2rayN 里按 Ctrl+V，全部节点一次全进（或复制 6 条链接同样按 Ctrl+V）；2) 选一个延迟最低的节点就能用了。"
   info "管理命令：$GEN_DIR/install.sh help（加用户、换端口、看流量都在这里）"
 }
 
@@ -443,6 +443,24 @@ for a in d['assets']:
   "$BIN" check -c "$ROOT/config.json" || { warn "新版校验配置失败，恢复旧二进制。"; mv "${BIN}.bak" "$BIN"; die "更新中止。"; }
   [ "$TEST_MODE" -eq 0 ] && systemctl restart "$SERVICE"
   info "已更新到 v$latest。"
+}
+
+cmd_self_update() {
+  # 更新本脚本与 gen-config.py 到仓库最新版；只换脚本文件，不动配置与订阅。
+  # 换完立刻退出，避免 bash 继续读已被替换的脚本文件。
+  local tmp
+  tmp="$(mktemp -d)"
+  curl -fsSL "https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh" -o "$tmp/install.sh" \
+    || die "下载 install.sh 失败，请检查网络。"
+  curl -fsSL "https://raw.githubusercontent.com/kimi712/snowdrop/main/gen-config.py" -o "$tmp/gen-config.py" \
+    || die "下载 gen-config.py 失败，请检查网络。"
+  bash -n "$tmp/install.sh" || die "新版 install.sh 语法校验失败，未替换。"
+  python3 -m py_compile "$tmp/gen-config.py" || die "新版 gen-config.py 语法校验失败，未替换。"
+  cp "$tmp/install.sh" "$GEN_DIR/install.sh" && chmod +x "$GEN_DIR/install.sh"
+  cp "$tmp/gen-config.py" "$GEN_PY"
+  rm -rf "$tmp"
+  info "脚本已更新到最新版。跑 $GEN_DIR/install.sh show default 看一键导入码。"
+  exit 0
 }
 
 cmd_uninstall() {
@@ -663,11 +681,12 @@ usage() {
 
   install [--domain 域名] [--vmess] [--naive]  一键安装（默认装 Reality+Hy2+TUIC+Trojan+SS）
   update [--auto]     检查并更新 sing-box 到最新稳定版（校验 SHA-256）
+  self-update         更新本脚本与 gen-config.py 到仓库最新版（校验语法，不动配置）
   uninstall           卸载（先备份配置到 /root/sing-box-ours-backup-*.tar.gz）
   status              服务状态 + 配置校验 + 监听端口
   health              健康检查（配置、服务）
   traffic             流量统计（仅端口总字节数，不记访问记录）
-  show [用户名]       查看状态；带用户名时打印分享链接＋二维码
+  show [用户名]       查看状态；带用户名时打印分享链接＋一键导入码＋二维码
   add-user <名> [--expires YYYY-MM-DD]  新增用户（独立凭证，可设到期日）
   del-user <名>       删除用户（其链接即刻失效）
   rotate-user <名>    轮换单个用户的全部凭证
@@ -704,6 +723,7 @@ main() {
   case "$cmd" in
     install)   cmd_install "$@" ;;
     update)    cmd_update "$@" ;;
+    self-update) cmd_self_update "$@" ;;
     uninstall) cmd_uninstall "$@" ;;
     status)    cmd_status "$@" ;;
     health)    cmd_health "$@" ;;

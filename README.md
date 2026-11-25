@@ -95,7 +95,7 @@ curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | 
 curl -fsSL https://raw.githubusercontent.com/kimi712/snowdrop/main/install.sh | bash
 ```
 
-默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完直接打印默认用户的订阅链接，复制到客户端就能用。
+默认装好：Reality + VLESS-TLS + Hy2 + TUIC + Trojan + SS（VMess、Naive、WARP 默认关闭，按需开启）。装完直接打印默认用户的订阅链接和一键导入码：v2rayN 里按 Ctrl+V，全部节点一次全进。
 
 ```bash
 install.sh show default          # 看默认用户的全部链接
@@ -107,6 +107,7 @@ install.sh status                # 服务状态 + 配置校验 + 监听端口
 install.sh health                # 健康检查
 install.sh traffic               # 流量统计（仅端口总字节数，不记访问记录）
 install.sh update                # 更新 sing-box 到最新稳定版（校验 SHA-256）
+install.sh self-update           # 更新脚本自身到仓库最新版（不动配置）
 install.sh latency               # 一键延迟测试（TCP 建连＋TLS 握手耗时）
 install.sh rotate-sni            # 轮换 Reality SNI（封锁名单盯上域名时换一张“身份证”）
 install.sh rotate-ports          # 轮换全部非 443 端口与跳跃区间
@@ -116,7 +117,7 @@ install.sh uninstall             # 卸载（先备份配置）
 install.sh menu                  # 交互菜单
 ```
 
-订阅文件在 `/etc/sing-box-ours/subscriptions/<用户名>/`：`links.txt`（分享链接）、`client.json`（sing-box 客户端）、`clash.yaml`（Clash / Mihomo）。
+订阅文件在 `/etc/sing-box-ours/subscriptions/<用户名>/`：`links.txt`（分享链接）、`sub.b64`（一键导入码，v2rayN 里按 Ctrl+V 直接导）、`client.json`（sing-box 客户端）、`clash.yaml`（Clash / Mihomo）。
 
 ## 与 sing-box-yg 的对照
 

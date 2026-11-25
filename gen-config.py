@@ -1014,6 +1014,9 @@ def cmd_regen(paths, singbox, args):
         with open(os.path.join(udir, "links.txt"), "w") as f:
             for label, url in links:
                 f.write("%s: %s\n" % (label, url))
+        with open(os.path.join(udir, "sub.b64"), "w") as f:
+            # 一键导入码：全部裸链接拼成一行 base64，v2rayN 里 Ctrl+V 一次全进。
+            f.write(_b64("\n".join(url for _, url in links) + "\n"))
         if shutil.which("qrencode"):
             qr_dir = os.path.join(udir, "qr")
             os.makedirs(qr_dir, exist_ok=True)
@@ -1028,10 +1031,10 @@ def cmd_regen(paths, singbox, args):
             f.write("\n")
         with open(os.path.join(udir, "clash.yaml"), "w") as f:
             f.write(build_clash_yaml(st, uname, u))
-        for fn in ("links.txt", "client.json", "clash.yaml"):
+        for fn in ("links.txt", "sub.b64", "client.json", "clash.yaml"):
             os.chmod(os.path.join(udir, fn), 0o600)
     print("配置与订阅已生成：%s" % paths.config)
-    print("订阅目录：%s/<用户名>/（links.txt / client.json / clash.yaml）" % paths.sub_dir)
+    print("订阅目录：%s/<用户名>/（links.txt / sub.b64 / client.json / clash.yaml）" % paths.sub_dir)
     return 0
 
 
@@ -1170,9 +1173,14 @@ def cmd_show(paths, singbox, args):
         if args.name not in st["users"]:
             eprint("用户 %s 不存在。" % args.name)
             return 1
+        links = build_share_links(st, args.name, st["users"][args.name])
         print("--- %s 的分享链接 ---" % args.name)
-        for label, url in build_share_links(st, args.name, st["users"][args.name]):
+        for label, url in links:
             print("%s: %s" % (label, url))
+        print("--- %s 的一键导入码（v2rayN / v2rayNG 通用） ---" % args.name)
+        print(_b64("\n".join(url for _, url in links) + "\n"))
+        print("用法：复制上面这一行 → 打开 v2rayN → 在节点列表按 Ctrl+V"
+              "（或 服务器 → 从剪贴板导入批量URL），全部节点一次全进。")
     return 0
 
 
