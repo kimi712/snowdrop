@@ -132,6 +132,7 @@ download_singbox() {
   got="$(sha256sum "${tmp}/sing-box.tar.gz" | awk '{print $1}')"
   [ "$got" = "$want" ] || die "SHA-256 不匹配！期望 ${want}，实际 ${got}。拒绝安装。"
   tar -xzf "${tmp}/sing-box.tar.gz" -C "$tmp"
+  mkdir -p "$(dirname "$BIN")"
   install -m 755 "${tmp}/sing-box-${SB_VERSION}-linux-${arch}/sing-box" "$BIN"
   rm -rf "$tmp"
   info "sing-box 已装到 ${BIN}：$("$BIN" version | head -1)"
