@@ -132,6 +132,7 @@ download_singbox() {
   local url="https://github.com/${SB_REPO}/releases/download/v${SB_VERSION}/sing-box-${SB_VERSION}-linux-${arch}.tar.gz"
   local tmp
   tmp="$(mktemp -d)"
+  trap "rm -rf '$tmp'" EXIT
   info "下载 sing-box v${SB_VERSION}（${arch}）……"
   curl -fsSL --retry 2 -o "${tmp}/sing-box.tar.gz" "$url" \
     || die "下载失败。请检查网络，或手动下载后放到 ${BIN}。"
@@ -139,7 +140,7 @@ download_singbox() {
   local got
   got="$(sha256sum "${tmp}/sing-box.tar.gz" | awk '{print $1}')"
   [ "$got" = "$want" ] || die "SHA-256 不匹配！期望 ${want}，实际 ${got}。拒绝安装。"
-  tar -xzf "${tmp}/sing-box.tar.gz" -C "$tmp"
+  tar --no-same-owner -xzf "${tmp}/sing-box.tar.gz" -C "$tmp"
   mkdir -p "$(dirname "$BIN")"
   install -m 755 "${tmp}/sing-box-${SB_VERSION}-linux-${arch}/sing-box" "$BIN"
   rm -rf "$tmp"
@@ -557,7 +558,7 @@ cmd_import() {
   [ -n "$file" ] && [ -f "$file" ] || die "用法：install.sh import <导出的 tar.gz>"
   local tmp
   tmp="$(mktemp -d)"
-  tar -xzf "$file" -C "$tmp" || die "解包失败：$file"
+  tar --no-same-owner -xzf "$file" -C "$tmp" || die "解包失败：$file"
   local src="$tmp/$(basename "$ROOT")"
   [ -f "$src/state.json" ] || die "包里没有 state.json，不是有效的导出文件。"
   local backup="/root/sing-box-ours-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
