@@ -90,18 +90,44 @@ need_root() {
 install_deps() {
   [ "$TEST_MODE" -eq 1 ] && return
   local os="$1"
-  info "安装依赖：curl tar openssl python3 nftables qrencode（可选）……"
-  if [ "$os" = "debian" ]; then
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
-    apt-get install -y -qq curl tar openssl python3 nftables iproute2 procps >/dev/null
-    apt-get install -y -qq qrencode >/dev/null || warn "qrencode 未装上，二维码功能将不可用。"
+  # 只装缺的。apt/dnf 源坏了也不死: 更新失败就警告并继续, 用已装好的工具装完;
+  # 真正必需的工具仍缺失才死, 并明说去修软件源。
+  local missing_pkgs="" t
+  for t in curl tar openssl python3; do
+    command -v "$t" >/dev/null 2>&1 || missing_pkgs="$missing_pkgs $t"
+  done
+  command -v nft >/dev/null 2>&1 || missing_pkgs="$missing_pkgs nftables"
+  command -v ss >/dev/null 2>&1 || missing_pkgs="$missing_pkgs iproute2"
+  command -v ps >/dev/null 2>&1 || missing_pkgs="$missing_pkgs procps"
+  if [ -z "$missing_pkgs" ]; then
+    info "依赖都已装好（curl/tar/openssl/python3/nftables），跳过安装。"
   else
-    dnf install -y -q curl tar openssl python3 nftables iproute procps-ng >/dev/null \
-      || yum install -y -q curl tar openssl python3 nftables iproute procps-ng >/dev/null
-    dnf install -y -q qrencode >/dev/null 2>&1 || yum install -y -q qrencode >/dev/null 2>&1 \
-      || warn "qrencode 未装上，二维码功能将不可用。"
+    info "安装缺失依赖：$missing_pkgs……"
+    if [ "$os" = "debian" ]; then
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -qq || warn "apt 更新失败（系统软件源可能有问题，例如某条源地址写错了），跳过更新，继续安装。"
+      # shellcheck disable=SC2086
+      apt-get install -y -qq $missing_pkgs >/dev/null 2>&1 \
+        || warn "部分依赖没装上（$missing_pkgs）。稍后若报错，请先修好系统软件源再重跑。"
+    else
+      # shellcheck disable=SC2086
+      dnf install -y -q $missing_pkgs >/dev/null 2>&1 \
+        || yum install -y -q $missing_pkgs >/dev/null 2>&1 \
+        || warn "部分依赖没装上（$missing_pkgs）。稍后若报错，请先修好系统软件源再重跑。"
+    fi
   fi
+  if ! command -v qrencode >/dev/null 2>&1; then
+    if [ "$os" = "debian" ]; then
+      apt-get install -y -qq qrencode >/dev/null 2>&1 || warn "qrencode 未装上，二维码功能将不可用。"
+    else
+      dnf install -y -q qrencode >/dev/null 2>&1 || yum install -y -q qrencode >/dev/null 2>&1 \
+        || warn "qrencode 未装上，二维码功能将不可用。"
+    fi
+  fi
+  for t in curl tar openssl python3; do
+    command -v "$t" >/dev/null 2>&1 \
+      || die "缺少必需工具 $t，且软件源装不上。请先修好系统软件源（检查 /etc/apt/sources.list 里有没有写错的地址，比如只有 https:/ubuntu 这种缺主机的行），再重跑这条命令。"
+  done
 }
 
 # ---------------------------------------------------------------------------
