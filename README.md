@@ -79,7 +79,13 @@ install.sh latency        # 服务端：逐端口 TCP 建连＋TLS 握手耗时
 
 ## 安装
 
-一台干净的 VPS（Debian / Ubuntu / Oracle Linux / Rocky / Alma，x86_64 或 ARM64），一条命令：
+一台干净的 VPS（Debian / Ubuntu / Oracle Linux / Rocky / Alma，x86_64 或 ARM64）。**必须用 root 跑**：AWS、甲骨文这些机器默认登录的是 `ubuntu` / `opc` 普通用户，先切到 root 再装：
+
+```bash
+sudo -i
+```
+
+然后一条命令：
 
 ```bash
 # 零交互全自动（推荐）：一条命令装完，装完即用
