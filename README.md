@@ -1,6 +1,6 @@
 # sing-box-ours：把隐私还给你
 
-> **English:** A self-hosted, open-source, multi-protocol sing-box deployment that returns privacy to you — zero logs by architecture, no accounts, no central provider, everyone runs their own node. One command installs 8 protocols (VLESS + Reality, Hysteria2, TUIC, Trojan, Shadowsocks 2022, VMess, Naive) with local subscriptions, multi-user management, and automatic rotation. See below (Chinese main text) for details.
+> **English:** A self-hosted, open-source, multi-protocol sing-box deployment that returns privacy to you — zero logs by architecture, no accounts, no central provider, everyone runs their own node. One command installs 6 protocols by default (VLESS + Reality, VLESS + TLS, Hysteria2, TUIC, Trojan, Shadowsocks 2022; VMess with one more command, Naive needs a real domain + certificate) with local subscriptions, multi-user management, and automatic rotation. See below (Chinese main text) for details.
 
 
 > "Arguing that you don't care about the right to privacy because you have nothing to hide is no different than saying you don't care about free speech because you have nothing to say."
@@ -27,7 +27,7 @@
 
 基于 sing-box v1.14.4（2026-10-24 发布，当前最新稳定版）的一键部署方案：
 
-- **一次安装，8 个协议同时在线**，TCP 的 Reality 和 UDP 的 Hysteria2 / TUIC 互为备份，一个被针对了还有别的能用。
+- **一次安装，6 个协议同时在线**（默认：VLESS Reality、VLESS TLS、Hysteria2、TUIC、Trojan、SS2022；VMess 一条命令开启，Naive 需真实域名+证书），TCP 的 Reality 和 UDP 的 Hysteria2 / TUIC 互为备份，一个被针对了还有别的能用。
 - **多用户管理**：每位用户独立凭证，增删用户一条命令；删了用户，他的链接即刻失效。
 - **订阅本地生成**：分享链接、sing-box 客户端 JSON、Clash / Mihomo YAML，全部在本机生成，不经过任何第三方订阅转换服务。
 - **改配置先校验再重载**：每次生成都调 `sing-box check`，不通过就恢复备份，绝不断服。

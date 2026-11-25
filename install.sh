@@ -28,6 +28,14 @@ BIN="${SB_OURS_BIN:-/usr/local/bin/sing-box}"
 ROOT="${SB_OURS_ROOT:-/etc/sing-box-ours}"
 GEN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GEN_PY="${GEN_DIR}/gen-config.py"
+# 管道安装（curl | bash）时 BASH_SOURCE 不是实体文件，GEN_DIR 会退化成当前目录，
+# gen-config.py 根本不在那里，安装必失败。此时把管理脚本统一放到 ROOT（/etc/sing-box-ours），
+# 之后的管理命令一律走该路径。
+if [ ! -f "${BASH_SOURCE[0]:-}" ]; then
+  GEN_DIR="$ROOT"
+  GEN_PY="$GEN_DIR/gen-config.py"
+fi
+REPO_RAW="https://raw.githubusercontent.com/kimi712/snowdrop/main"
 UNIT="/etc/systemd/system/${SERVICE}.service"
 TIMER="/etc/systemd/system/${SERVICE}-update.timer"
 
@@ -136,6 +144,23 @@ download_singbox() {
   install -m 755 "${tmp}/sing-box-${SB_VERSION}-linux-${arch}/sing-box" "$BIN"
   rm -rf "$tmp"
   info "sing-box 已装到 ${BIN}：$("$BIN" version | head -1)"
+}
+
+# ---------------------------------------------------------------------------
+# 配置生成器自举：管道安装时本地没有仓库文件，从仓库拉一份 gen-config.py；
+# 同时把 install.sh 自身落到 GEN_DIR，之后 show/add-user 等管理命令才找得到脚本。
+# ---------------------------------------------------------------------------
+ensure_gen_py() {
+  [ -f "$GEN_PY" ] && return
+  info "下载 gen-config.py（本地没有，从仓库拉取）……"
+  mkdir -p "$GEN_DIR"
+  curl -fsSL --retry 2 -o "$GEN_PY" "$REPO_RAW/gen-config.py" \
+    || die "下载 gen-config.py 失败。请检查网络，或先 git clone https://github.com/kimi712/snowdrop.git 再运行 ./install.sh install。"
+  if [ ! -f "$GEN_DIR/install.sh" ]; then
+    curl -fsSL --retry 2 -o "$GEN_DIR/install.sh" "$REPO_RAW/install.sh" \
+      && chmod +x "$GEN_DIR/install.sh" \
+      || warn "保存 install.sh 失败，管理命令请用仓库里的 install.sh。"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -639,6 +664,8 @@ EOF
 
 main() {
   local cmd="${1:-menu}"; shift || true
+  # help 不用生成器，其他命令先确保 gen-config.py 在位（管道安装时现场下载）。
+  [ "$cmd" = "help" ] || [ "$cmd" = "--help" ] || [ "$cmd" = "-h" ] || ensure_gen_py
   case "$cmd" in
     install)   cmd_install "$@" ;;
     update)    cmd_update "$@" ;;
